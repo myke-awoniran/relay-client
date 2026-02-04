@@ -21,7 +21,7 @@ export default function Page() {
         try {
             const form = new FormData(e.currentTarget);
 
-            const res = await fetch("/api/call", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/call`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
@@ -44,7 +44,7 @@ export default function Page() {
         if (!session) return;
         setEnding(true);
         try {
-            const res = await fetch("/api/call/end", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/call/end`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
