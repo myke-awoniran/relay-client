@@ -20,17 +20,18 @@ export default function Page() {
 
         const form = new FormData(e.currentTarget);
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sessions`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/call`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
-                prospect_name: form.get("name"),
+                name: form.get("name"),
                 company: form.get("company"),
                 signal: form.get("signal"),
                 context: form.get("context"),
-                phone_number: form.get("phone"),
+                phone: form.get("phone"),
             }),
         });
+        console.log(res);
 
         setSession(await res.json());
         setLoading(false);
