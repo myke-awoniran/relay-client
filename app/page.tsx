@@ -12,34 +12,61 @@ type Outcome =
 
 export default function Page() {
     const [loading, setLoading] = useState(false);
+    const [ending, setEnding] = useState(false);
     const [session, setSession] = useState<any>(null);
 
     async function startCall(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setLoading(true);
+        try {
+            const form = new FormData(e.currentTarget);
 
-        const form = new FormData(e.currentTarget);
+            const res = await fetch("/api/call", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    name: form.get("name"),
+                    company: form.get("company"),
+                    signal: form.get("signal"),
+                    context: form.get("context"),
+                    phone: form.get("phone"),
+                }),
+            });
+            console.log(res);
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/call`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                name: form.get("name"),
-                company: form.get("company"),
-                signal: form.get("signal"),
-                context: form.get("context"),
-                phone: form.get("phone"),
-            }),
-        });
-        console.log(res);
+            setSession(await res.json());
+        } finally {
+            setLoading(false);
+        }
+    }
 
-        setSession(await res.json());
-        setLoading(false);
+    async function endCall() {
+        if (!session) return;
+        setEnding(true);
+        try {
+            const res = await fetch("/api/call/end", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    id: session?.id ?? session?.call_id ?? session?.session_id,
+                }),
+            });
+
+            if (res.ok) {
+                setSession(await res.json());
+            } else {
+                setSession(null);
+            }
+        } finally {
+            setEnding(false);
+        }
     }
 
     const intentLabel = mapIntent(session?.intent_score);
     const outcome = mapOutcome(session?.status);
     const nextStep = generateNextStep(intentLabel, outcome);
+    const callInProgress = session?.status === "calling" || session?.status === "dialing" || session?.status === "connected";
+    const inProgressMessage = session?.message || "Call is in progress…";
 
     return (
         <>
@@ -69,15 +96,29 @@ export default function Page() {
                     <Input name="context" label="Context"/>
                     <Input name="phone" label="Phone number"/>
 
-                    <button
-                        disabled={loading}
-                        className="w-full mt-4 py-3 rounded-lg font-medium
+                    {callInProgress ? (
+                        <button
+                            type="button"
+                            onClick={endCall}
+                            disabled={ending}
+                            className="w-full mt-4 py-3 rounded-lg font-medium
                text-white
               disabled:opacity-50 bg-black hover:bg-gray-900 cursor-pointer
             "
-                    >
-                        {loading ? "Calling…" : "Start Call"}
-                    </button>
+                        >
+                            {ending ? "Ending…" : "End Call"}
+                        </button>
+                    ) : (
+                        <button
+                            disabled={loading}
+                            className="w-full mt-4 py-3 rounded-lg font-medium
+               text-white
+              disabled:opacity-50 bg-black hover:bg-gray-900 cursor-pointer
+            "
+                        >
+                            {loading ? "Calling…" : "Start Call"}
+                        </button>
+                    )}
                 </form>
 
                 {/* Output */}
@@ -106,17 +147,17 @@ export default function Page() {
 
                     <Divider/>
 
-                    <Section title="Conversation">
-            <pre className="text-sm text-neutral-800 whitespace-pre-wrap leading-relaxed">
-              {session?.transcript || "Waiting for call…"}
-            </pre>
-                    </Section>
+                                        <Section title="Conversation">
+                        <pre className="text-sm text-neutral-800 whitespace-pre-wrap leading-relaxed">
+                            {session?.transcript || (callInProgress ? inProgressMessage : "Waiting for call…")}
+                        </pre>
+                                        </Section>
 
                     <Divider/>
 
                     <Section title="Qualification Summary">
                         <p className="text-neutral-800 leading-relaxed">
-                            {session?.summary || "—"}
+                            {session?.summary || (callInProgress ? "Call in progress." : "—")}
                         </p>
                     </Section>
 
@@ -124,7 +165,7 @@ export default function Page() {
 
                     <Section title="Next Step">
                         <p className="text-neutral-800 leading-relaxed">
-                            {nextStep}
+                            {callInProgress ? "Await call completion" : nextStep}
                         </p>
                     </Section>
 
@@ -144,6 +185,8 @@ function mapIntent(score?: number) {
 
 function mapOutcome(status?: string): Outcome {
     switch (status) {
+        case "calling":
+            return "Dialing";
         case "connected":
             return "Connected";
         case "voicemail":
