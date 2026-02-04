@@ -2,7 +2,7 @@ import "./globals.css";
 import RelayLayout from "@/components/relayLayout";
 
 export const metadata = {
-    title: "Relay",
+    title: "Relay--AI SDR that turns LinkedIn intent signals into real-time sales calls.",
     description: "Signal → Voice → Qualification",
 };
 
